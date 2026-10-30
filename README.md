@@ -43,7 +43,6 @@ backend/
 │       ├── chat_service.py    # SSE 事件编排
 │       └── document_service.py# 上传编排：解析→清洗→切分→入库→BM25
 ├── data/                      # app.db / chroma_db / index / logs（不入库）
-├── legacy/                    # 重构前的旧实现，仅作对照，不参与运行
 ├── scripts/                   # rebuild_index.py / smoke_test.py
 ├── tests/                     # 清洗、切分、RRF 的单元测试
 ├── .env.example
@@ -174,10 +173,10 @@ python scripts/rebuild_index.py --migrate-legacy --username demo
 
 旧实现的 metadata 只有 `source / create_time`，没有页码，因此新版换了 collection 名（`rag_v2`），避免读到不兼容数据。
 
-- 旧代码已移到 `backend/legacy/`，不参与运行，确认新版本稳定后可整体删除。
+- 旧版的单体后端（`main.py` / `rag.py` / `vector_stores.py` / `knowledge_base.py` / `config_data.py` / `check_db.py`）
+  与 Streamlit 前端已从仓库移除，对应能力全部迁移到 `app/` 下；需要回看旧实现可用 `git show <首个提交>`。
 - 旧向量库数据可通过 `python scripts/rebuild_index.py --migrate-legacy --username <用户名>` 导入；
-  但如需页码追溯，建议重新上传原始文件。
-- 根目录 `requirements.txt` 与 `frontend/`（Streamlit 版）属于旧版，不再随新接口维护。
+  但旧数据不含页码，如需来源追溯建议重新上传原始文件。
 
 ## 已知取舍
 

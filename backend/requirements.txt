@@ -13,15 +13,14 @@ sqlalchemy
 pyjwt
 
 # ===================== LangChain =====================
-langchain
 langchain-core
 langchain-community
 langchain-chroma
 langchain-text-splitters
 
 # ===================== 模型服务（阿里百炼） =====================
+# langchain_community 的 ChatTongyi 依赖 dashscope SDK
 dashscope
-openai
 
 # ===================== 检索 =====================
 jieba

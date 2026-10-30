@@ -11,7 +11,6 @@ from __future__ import annotations
 import json
 from collections.abc import Sequence
 
-from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from loguru import logger
 from sqlalchemy import func, select
@@ -19,7 +18,6 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.core.exceptions import BizException, ErrorCode
-from app.db.database import SessionLocal
 from app.db.models import Conversation, Message, now
 from app.schemas.chat import ConversationOut, MessageOut, SourceItem
 
@@ -190,61 +188,3 @@ class ConversationService:
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
         )
-
-
-class SqliteChatMessageHistory(BaseChatMessageHistory):
-    """LangChain 聊天历史适配器。
-
-    自行管理数据库会话，因此可以配合 RunnableWithMessageHistory 使用。
-    主要用途是让项目的 LCEL 链保持与 LangChain 生态兼容。
-    """
-
-    def __init__(self, conversation_id: str, max_messages: int = 20) -> None:
-        self.conversation_id = conversation_id
-        self.max_messages = max_messages
-
-    def _session(self) -> Session:
-        return SessionLocal()
-
-    @property
-    def messages(self) -> list[BaseMessage]:
-        db = self._session()
-        try:
-            rows = db.scalars(
-                select(Message)
-                .where(Message.conversation_id == self.conversation_id)
-                .order_by(Message.created_at.desc())
-                .limit(self.max_messages)
-            ).all()
-            return [
-                HumanMessage(content=row.content)
-                if row.role == "user"
-                else AIMessage(content=row.content)
-                for row in reversed(rows)
-            ]
-        finally:
-            db.close()
-
-    def add_messages(self, messages: Sequence[BaseMessage]) -> None:
-        db = self._session()
-        try:
-            for message in messages:
-                role = "user" if isinstance(message, HumanMessage) else "assistant"
-                db.add(
-                    Message(
-                        conversation_id=self.conversation_id,
-                        role=role,
-                        content=str(message.content),
-                    )
-                )
-            db.commit()
-        finally:
-            db.close()
-
-    def clear(self) -> None:
-        db = self._session()
-        try:
-            db.query(Message).filter(Message.conversation_id == self.conversation_id).delete()
-            db.commit()
-        finally:
-            db.close()

@@ -90,12 +90,3 @@ class RenameRequest(BaseModel):
         if not value:
             raise ValueError("标题不能为空")
         return value
-
-
-class ChatDonePayload(BaseModel):
-    """SSE done 事件的负载，方便前端拿到落库后的消息 ID。"""
-
-    message_id: str
-    conversation_id: str
-    conversation_title: str
-    latency_ms: int

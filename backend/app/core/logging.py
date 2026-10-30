@@ -90,8 +90,3 @@ def setup_logging() -> None:
         std_logger.propagate = False
 
     _CONFIGURED = True
-
-
-def get_logger():
-    """业务代码统一通过它拿 logger。"""
-    return logger

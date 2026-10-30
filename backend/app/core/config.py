@@ -34,7 +34,6 @@ class Settings(BaseSettings):
     app_version: str = "2.0.0"
     api_prefix: str = "/api/v1"
     debug: bool = False
-    host: str = "0.0.0.0"
     port: int = 8000
 
     # 允许跨域的前端地址，逗号分隔
@@ -48,11 +47,9 @@ class Settings(BaseSettings):
 
     chat_model_name: str = "qwen3-max"
     embedding_model_name: str = "text-embedding-v4"
-    embedding_dimension: int = 1024
     # DashScope embedding 单次请求文本条数上限较小，按批提交
     embedding_batch_size: int = 10
     llm_temperature: float = 0.3
-    llm_timeout: float = 60.0
 
     # ===================== 数据存储 =====================
     data_dir: str = "./data"

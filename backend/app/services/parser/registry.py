@@ -31,10 +31,6 @@ def get_parser(extension: str) -> BaseParser:
     raise BizException(ErrorCode.FILE_TYPE_UNSUPPORTED, hint)
 
 
-def supported_extensions() -> list[str]:
-    return sorted({ext for parser in _PARSERS for ext in parser.extensions})
-
-
 def parse_file(filename: str, data: bytes) -> ParseResult:
     extension = os.path.splitext(filename)[-1].lower()
     parser = get_parser(extension)

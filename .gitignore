@@ -1,0 +1,29 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.DS_Store
+
+# ---------- 运行时数据（后端） ----------
+# SQLite、Chroma 持久化目录、BM25 索引、日志
+backend/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------- 前端 ----------
+frontend-web/node_modules/
+frontend-web/dist/
+frontend-web/.vite/
+*.local
+
+# ---------- 测试与工具 ----------
+.pytest_cache/
+.coverage
+htmlcov/

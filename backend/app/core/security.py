@@ -1,7 +1,8 @@
-"""安全相关：密码哈希与 JWT。
+"""安全基础：密码哈希与 JWT。
 
-密码使用标准库 hashlib.pbkdf2_hmac，不引入 bcrypt（Windows 下编译依赖较重）。
-JWT 使用 PyJWT。
+hash_password / verify_password：PBKDF2-HMAC + 随机盐，不存明文
+create_access_token / decode_access_token：JWT 签发与校验（HS256）
+下游使用者：api.auth、api.deps
 """
 
 from __future__ import annotations

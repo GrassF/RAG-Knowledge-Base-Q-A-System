@@ -1,7 +1,7 @@
 """DOCX 解析：按文档流顺序抽取段落与表格，并按标题层级生成章节路径。
 
-python-docx 的 doc.paragraphs 会丢掉表格和顺序信息，所以这里直接遍历
-document.element.body 的子元素，保证段落与表格的相对顺序与原文一致。
+要点：依靠段落样式（Heading 1/2/3）识别标题，把章节路径写入 ParsedBlock.section
+      表格按行拼接成文本块，避免表格内的结构信息丢失
 """
 
 from __future__ import annotations

@@ -1,4 +1,9 @@
-"""文档管理接口：上传、列表、切片预览、删除、清空。"""
+"""文档管理接口：上传、列表、切片预览、删除、清空。
+
+位置：HTTP 入口 → DocumentService
+接口：POST /documents/upload、GET /documents、GET /documents/{id}/chunks、
+      DELETE /documents/{id}、DELETE /documents
+"""
 
 from __future__ import annotations
 

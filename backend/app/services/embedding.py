@@ -1,8 +1,8 @@
-"""Embedding 服务。
+"""向量化服务：调用 DashScope 的 text-embedding-v4 把文本转成向量。
 
-在 DashScope 官方封装外面加了两件事：
-1. 分批提交（DashScope 单次请求的文本条数有上限）
-2. 失败重试（网络抖动很常见，一次失败就让整个上传失败体验太差）
+实现 LangChain Embeddings 接口，实例可直接交给 Chroma 使用
+要点：分批提交（单次请求的文本条数有上限）+ tenacity 指数退避重试
+注意：每次调用都是远程 HTTP 请求，上传大文档时批量成本较高
 """
 
 from __future__ import annotations

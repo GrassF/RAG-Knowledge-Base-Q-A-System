@@ -1,4 +1,7 @@
-"""解析器注册表：按扩展名分发。"""
+"""解析器注册表：按文件扩展名分发到具体解析器实现。
+
+入口：get_parser() 取解析器实例；parse_file() 一步完成解析并返回结果
+"""
 
 from __future__ import annotations
 

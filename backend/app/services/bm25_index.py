@@ -1,12 +1,8 @@
-"""BM25 关键词索引。
+"""BM25 关键词索引：纯算法实现，不依赖模型，也没有网络请求。
 
-为什么需要它：向量检索擅长语义相似，但对"精确术语 / 型号 / 编号 / 人名"这类
-字面匹配经常翻车，BM25 正好补上这块短板，两者用 RRF 融合。
-
-实现要点：
-- 中文用 jieba 的搜索引擎模式分词，与向量侧共用同一份 chunk 文本
-- 索引以 chunk_id 为键常驻内存，文档增删后重建（千级切片耗时毫秒级）
-- 持久化到 pkl，进程重启不必重新分词
+组成：jieba 分词 + rank_bm25.BM25Okapi；索引缓存到 data/index/bm25_*.json
+位置：hybrid_retriever 的两路召回之一；文档入库后由 document_service 更新
+要点：BM25Okapi 对高频词可能给出负分，search() 里已把负分过滤掉
 """
 
 from __future__ import annotations

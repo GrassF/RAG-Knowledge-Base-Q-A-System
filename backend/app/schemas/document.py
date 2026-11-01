@@ -1,4 +1,10 @@
-"""文档管理相关的请求/响应模型。"""
+"""文档模型：上传结果、文档列表项、切片预览、清空结果。
+
+DocumentOut：单篇文档的元信息与切片数
+UploadResult：上传完成后的切片统计
+ChunkPreview / ChunkPreviewOut：切片正文 + 页码 + 章节，用于入库后核对切分效果
+ClearResult：清空操作实际删除的文档数与切片数
+"""
 
 from __future__ import annotations
 

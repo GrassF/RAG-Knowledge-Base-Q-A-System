@@ -1,6 +1,8 @@
 """SQLite 连接与会话管理。
 
-SQLite 开启 WAL 模式并允许跨线程使用，满足 FastAPI 线程池并发读写的场景。
+机制：_set_sqlite_pragma 为每个连接开启 WAL 模式提升并发读性能；
+      get_db() 作为 FastAPI 依赖逐请求提供 Session；
+      session_scope() 供脚本与后台任务使用的上下文管理器
 """
 
 from __future__ import annotations

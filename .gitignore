@@ -10,6 +10,10 @@ build/
 *.egg-info/
 .DS_Store
 
+# ---------- 编辑器 ----------
+.idea/
+.vscode/
+
 # ---------- 运行时数据（后端） ----------
 # SQLite、Chroma 持久化目录、BM25 索引、日志
 backend/data/

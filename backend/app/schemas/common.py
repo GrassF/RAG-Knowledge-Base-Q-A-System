@@ -1,7 +1,6 @@
-"""通用响应模型。
+"""统一响应外壳：{code, message, data, request_id}。
 
-所有接口统一返回 {code, message, data, request_id}。
-code=0 表示成功，非 0 见 app.core.exceptions.ErrorCode。
+约定：code=0 表示成功，非 0 为业务错误码；success() 供所有接口复用
 """
 
 from __future__ import annotations

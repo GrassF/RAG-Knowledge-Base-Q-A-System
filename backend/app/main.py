@@ -1,9 +1,8 @@
 """FastAPI 应用入口。
 
-启动：在 backend/ 目录下执行
-    uvicorn app.main:app --reload --port 8000
-
+启动：在 backend/ 目录下执行 uvicorn app.main:app --reload --port 8000
 接口文档：http://127.0.0.1:8000/docs
+装配顺序：日志 → 中间件 → 异常处理 → 路由 → 启动钩子（建表 + 初始化服务）
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    setup_logging()
+    setup_logging() #日志部分跳过了
     logger.info("启动 {} v{}", settings.app_name, settings.app_version)
 
     if not settings.dashscope_api_key or settings.dashscope_api_key == "xxx":

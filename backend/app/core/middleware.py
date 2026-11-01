@@ -1,7 +1,8 @@
-"""ASGI 中间件：请求上下文、访问日志、限流。
+"""ASGI 中间件：请求上下文与限流。
 
-这里刻意使用纯 ASGI 中间件而不是 BaseHTTPMiddleware：
-BaseHTTPMiddleware 会包裹 StreamingResponse，容易破坏 SSE 的边推边发行为。
+RequestContextMiddleware：生成 request_id，注入日志上下文与响应头 X-Request-ID
+RateLimitMiddleware：按客户端 IP 做每分钟请求数限制
+要点：add_middleware 后添加的在最外层，RequestContext 必须最外层
 """
 
 from __future__ import annotations

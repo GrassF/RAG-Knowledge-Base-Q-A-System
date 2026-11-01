@@ -1,7 +1,9 @@
-"""全局配置。
+"""全局配置：项目中所有可调参数的唯一声明处。
 
-所有配置集中在这里，通过 .env 或环境变量覆盖，禁止在业务代码里硬编码。
-配置对象只创建一次（lru_cache），避免重复读取磁盘。
+机制：pydantic-settings 从 backend/.env 读取；字段名的小写形式即环境变量名
+      （dashscope_api_key ← DASHSCOPE_API_KEY）；get_settings() 带 lru_cache 单例
+内容：应用元信息、API 密钥、向量库与集合、检索与重排参数、JWT、限流、日志
+要点：派生路径用 @property 计算成绝对路径，避免各处手写拼接
 """
 
 from __future__ import annotations
@@ -45,7 +47,7 @@ class Settings(BaseSettings):
     # qwen3-rerank 走 OpenAI 兼容端点，与上面的标准端点不同
     dashscope_compatible_base_url: str = "https://dashscope.aliyuncs.com/compatible-api/v1"
 
-    chat_model_name: str = "qwen3-max"
+    chat_model_name: str = "qwen-max"
     embedding_model_name: str = "text-embedding-v4"
     # DashScope embedding 单次请求文本条数上限较小，按批提交
     embedding_batch_size: int = 10
@@ -129,7 +131,7 @@ class Settings(BaseSettings):
         return value
 
     # ===================== 派生路径 =====================
-    @property
+    @property #把一个类方法伪装成类属性 data_dir 转换为绝对路径对象
     def data_path(self) -> Path:
         return self._resolve(self.data_dir)
 

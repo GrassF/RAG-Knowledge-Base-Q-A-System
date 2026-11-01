@@ -1,7 +1,6 @@
-"""检索结果中间结构。
+"""检索结果中间结构 RetrievedChunk。
 
-向量召回、BM25 召回、RRF 融合、重排都围绕它做数据流转，
-最终再转换成 LangChain 的 Document 或接口层的 SourceItem。
+字段：正文、元数据、三路分数（向量 / BM25 / RRF / 重排），并负责转成 SourceItem
 """
 
 from __future__ import annotations

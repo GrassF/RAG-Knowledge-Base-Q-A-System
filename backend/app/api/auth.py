@@ -1,4 +1,9 @@
-"""鉴权接口：注册、登录、当前用户。"""
+"""鉴权接口：注册、登录、查询当前用户。
+
+位置：HTTP 入口 → core.security（PBKDF2 校验 + JWT 签发）
+接口：POST /auth/register、POST /auth/login、GET /auth/me
+下游：db.models.User、core.security
+"""
 
 from __future__ import annotations
 

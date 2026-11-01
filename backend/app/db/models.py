@@ -1,9 +1,9 @@
-"""ORM 模型定义。
+"""ORM 模型：用户、会话、消息、文档。
 
-- User          用户
-- Conversation  会话（归属于某个用户）
-- Message       会话内的单条消息（助手消息保存引用来源）
-- Document      用户上传的原始文档（用于列表、去重、级联删除）
+User：账号，密码只存 PBKDF2 哈希
+Conversation / Message：多轮对话记忆；Message 冗余存 sources 的 JSON 快照
+Document：上传文档的元信息与切片统计
+公共工具：now()（UTC 时间）、new_id()（业务 ID 生成）
 """
 
 from __future__ import annotations

@@ -1,14 +1,8 @@
-"""问答编排 + SSE 事件流。
+"""问答编排：把「检索 → 拼 Prompt → 流式生成 → 落库」串成 SSE 事件流。
 
-一次问答的事件顺序（前端据此渲染）：
-    meta    -> 会话信息（新建会话时前端需要拿到 id）
-    sources -> 本次回答引用的片段列表（文件名 / 页码 / 章节 / 分数）
-    delta   -> 答案 token（多次）
-    done    -> 落库后的消息 id 与耗时
-    error   -> 任何阶段失败
-
-之所以不用 RunnableWithMessageHistory 一把梭：来源卡片必须在答案之前
-先推给前端，需要把"检索"和"生成"两步拆开控制。
+事件顺序：meta → sources → delta*（逐字增量）→ done
+done 携带 message_id / conversation_id / conversation_title / latency_ms / source_count
+上游：api.chat；下游：rag_chain（检索与生成）、conversation（持久化）
 """
 
 from __future__ import annotations

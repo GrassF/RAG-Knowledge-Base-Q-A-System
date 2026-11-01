@@ -1,7 +1,7 @@
-"""服务容器：把重量级对象（向量库、BM25 索引、Reranker）在启动时初始化一次。
+"""服务容器：重量级对象（向量库、BM25 索引、Reranker）在启动时只初始化一次。
 
-FastAPI 的 lifespan 负责调用 init_services() / shutdown_services()，
-路由通过 get_rag() 拿到同一个实例，避免每个请求重复加载 jieba 词典或重建索引。
+位置：main.lifespan → init_services()；路由通过 get_rag() 拿同一个实例
+理由：避免每个请求重复加载 jieba 词典、重复打开 Chroma、重复创建 HTTP 客户端
 """
 
 from __future__ import annotations

@@ -1,4 +1,9 @@
-"""路由依赖：数据库会话、当前登录用户、RAG 服务。"""
+"""路由依赖：通过 Depends() 向业务路由注入公共依赖。
+
+提供：get_db()（数据库会话）、get_current_user()（解析 JWT 得到当前用户）、
+      get_rag()（全局唯一的 RagChain 实例）
+位置：被 auth / documents / chat 三个路由文件引用
+"""
 
 from __future__ import annotations
 

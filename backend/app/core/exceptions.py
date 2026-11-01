@@ -1,7 +1,8 @@
 """统一错误码与异常体系。
 
-约定：业务错误一律通过 BizException 抛出，由全局处理器转成
-{code, message, data, request_id} 结构，前端只认 code 字段。
+机制：ErrorCode 枚举集中定义业务码与文案；BizException 携带码与自定义消息；
+      register_exception_handlers() 把业务异常、参数校验失败、未捕获异常
+      统一转成 {code, message, data, request_id} 格式的响应
 """
 
 from __future__ import annotations

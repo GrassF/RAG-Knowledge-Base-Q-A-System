@@ -1,6 +1,9 @@
-"""建表工具。应用启动时调用 init_db()，保证表结构存在。"""
+"""建表工具：应用启动时调用，保证表结构存在（幂等）。
 
-from __future__ import annotations
+位置：main.lifespan → init_db() → Base.metadata.create_all()
+说明：数据库文件与目录不存在时会自动创建
+"""
+
 
 from loguru import logger
 

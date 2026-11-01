@@ -1,11 +1,8 @@
-"""混合检索：向量召回 + BM25 召回 + RRF 融合 + 重排。
+"""混合检索总控：向量召回 ∥ BM25 召回 → RRF 融合 → Cross-Encoder 重排。
 
-RRF（Reciprocal Rank Fusion）只依赖排名不依赖分数，
-避免了"余弦相似度 0.7"和"BM25 分数 12.3"这两种量纲无法直接相加的问题：
-
-    score(d) = Σ 1 / (k + rank_i(d))
-
-k 取 60 是原论文的推荐值，用来削弱头部排名的绝对优势。
+参数来源：请求里的 RetrievalOptions 逐项覆盖 .env 默认值（resolve_options）
+要点：两路召回用线程池并行执行；RRF 只依据排名、不依据原始分数，
+      从而规避「余弦相似度」与「BM25 分值」量纲不同无法相加的问题
 """
 
 from __future__ import annotations

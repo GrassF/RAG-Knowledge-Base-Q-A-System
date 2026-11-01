@@ -1,4 +1,9 @@
-"""鉴权相关的请求/响应模型。"""
+"""鉴权模型：注册/登录请求体，用户信息与 Token 响应体。
+
+RegisterRequest / LoginRequest：用户名 + 密码，带长度与格式校验
+UserOut：对外暴露的用户信息，不含密码哈希
+TokenOut：JWT 字符串与其过期时间
+"""
 
 from __future__ import annotations
 

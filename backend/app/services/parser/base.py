@@ -1,7 +1,9 @@
-"""文档解析的统一中间格式。
+"""解析器的统一中间格式与公共工具。
 
-解析层只负责"把文件变成本地的结构化文本块"，不做清洗和切分。
-保留 page / section 是为了让最终的回答能追溯到"哪个文件第几页哪一节"。
+ParsedBlock：一段文本 + 页码 + 章节路径 + 类型（段落 / 标题 / 表格）
+ParseResult：全文 + 块列表 + 元信息
+BaseParser：所有解析器的抽象基类
+章节识别：detect_heading / push_section / _heading_depth
 """
 
 from __future__ import annotations

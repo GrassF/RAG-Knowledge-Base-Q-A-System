@@ -1,6 +1,7 @@
-"""日志配置。
+"""日志配置：loguru 为主，拦截标准库 logging 统一输出。
 
-统一接管 uvicorn / 标准库 logging，输出带 request_id 的结构化日志。
+机制：setup_logging() 配置控制台与文件输出（按天切分、保留份数、压缩）；
+      _patch_record() 把 request_id 注入每条日志，便于按请求串联排查
 """
 
 from __future__ import annotations

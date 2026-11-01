@@ -1,9 +1,9 @@
-"""文档服务：上传编排、列表、删除、清空、切片预览。
+"""文档服务：上传编排与文档全生命周期管理。
 
-一条上传链路的完整顺序：
-校验 -> 去重 -> 解析（带页码/章节）-> 清洗 -> 结构感知切分
--> 向量化入库 -> BM25 入库 -> 更新文档状态
-任何一步失败都会把文档标记为 failed，避免出现"库里有一半数据但状态是成功"。
+上传链路：解析（parser）→ 清洗（cleaning）→ 结构感知切分（splitter）
+          → 向量化入库（embedding + vector_store）→ 同步 BM25 索引
+另提供：文档列表、切片预览、单篇删除、清空全部
+上游：api.documents；下游：parser/*、splitter、embedding、vector_store、bm25_index
 """
 
 from __future__ import annotations

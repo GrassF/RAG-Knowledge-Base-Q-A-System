@@ -1,13 +1,10 @@
-"""Cross-Encoder 重排序。
+"""重排序（Cross-Encoder）：对融合后的候选，按「问题-片段」相关性重新打分。
 
-初步召回（向量 + BM25 融合）拿到的是"可能相关"的候选，顺序并不精确；
-Reranker 把 query 与每个候选拼在一起做一次相关性打分，按分数重排，
-这是提升 RAG 回答准确率最有效的一步。
-
-模型选择：
-- gte-rerank-v2  走 DashScope 标准端点  /api/v1/services/rerank/text-rerank/text-rerank
-- qwen3-rerank   走 OpenAI 兼容端点     /compatible-api/v1/reranks
-两者报文结构不同，所以分成两个实现，由工厂按配置选择。
+实现：NoopReranker（关闭开关时使用）
+      DashScopeReranker：gte-rerank-v2，走标准端点
+      QwenReranker：qwen3-rerank，走 OpenAI 兼容端点
+切换：create_reranker() 依据 rerank_model 是否以 qwen3 开头选择实现
+要点：失败自动降级为原顺序，不阻断问答；单次最多 50 条候选，每条截断 2000 字符
 """
 
 from __future__ import annotations

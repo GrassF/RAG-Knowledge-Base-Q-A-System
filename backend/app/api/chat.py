@@ -1,4 +1,10 @@
-"""问答接口与会话管理。"""
+"""问答与会话接口：SSE 流式问答 + 会话的查/改/删。
+
+位置：HTTP 入口 → ChatService（生成）→ ConversationService（落库）
+接口：POST /chat/stream（SSE）、GET /conversations、GET /conversations/{id}、
+      PATCH /conversations/{id}、DELETE /conversations/{id}
+要点：SSE 事件顺序为 meta → sources → delta* → done
+"""
 
 from __future__ import annotations
 

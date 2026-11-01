@@ -1,7 +1,8 @@
-"""向量库服务（Chroma / PGVector）。
+"""向量库服务：封装 Chroma（默认）与 PGVector（可选）。
 
-职责边界：只负责向量库的读写，不做切分、不做融合。
-检索接口显式暴露 k 与 score_threshold，避免把阈值当 Top-K 用的历史问题。
+职责：写入切片、相似度检索、按文档删除、统计文档数与切片数
+要点：显式指定余弦距离（Chroma 默认是 L2，与阈值语义不符）；
+      元数据只保留 str/int/float/bool，None 会导致写入失败
 """
 
 from __future__ import annotations

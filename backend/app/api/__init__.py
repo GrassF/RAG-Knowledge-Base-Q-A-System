@@ -1,4 +1,10 @@
-"""API 路由汇总。"""
+"""HTTP 路由汇总。
+
+把 auth / documents / chat / health 四个子路由聚合成 api_router，
+由 main.create_app() 以 settings.api_prefix（默认 /api/v1）统一挂载。
+
+这一层只做「参数校验 + 调 service + 包响应」，不含业务逻辑。
+"""
 
 from __future__ import annotations
 

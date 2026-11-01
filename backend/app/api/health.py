@@ -1,4 +1,8 @@
-"""健康检查。"""
+"""健康检查接口：返回服务存活状态与知识库统计。
+
+接口：GET /api/v1/health
+用途：探活、前端连接状态展示、部署健康检查
+"""
 
 from __future__ import annotations
 

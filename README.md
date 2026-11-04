@@ -165,14 +165,6 @@ python scripts/rebuild_index.py --stats
 python scripts/rebuild_index.py                       # 从向量库重建 BM25
 ```
 
-## 已知取舍
-
-- 前端为控制构建复杂度采用 Element Plus 全量引入，首屏 JS 约 1 MB（gzip 374 KB）；
-  如需优化可改用 `unplugin-vue-components` 按需引入。
-- 重排依赖外部 API，已做 3 秒超时降级；想换本地模型只需新增一个 `BaseReranker` 实现。
-- RAG 效果评估（Chunk Size / Top-K / 纯向量 vs 混合的量化对比）本期未做，
-  但检索参数已全部配置化，后续补 `scripts/eval.py` 与测试集即可对接。
-
 ## 技术栈
 
 - **后端**：FastAPI、SQLAlchemy 2.0、pydantic-settings、loguru

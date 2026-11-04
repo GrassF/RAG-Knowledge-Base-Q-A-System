@@ -9,9 +9,6 @@ pydantic-settings
 # ===================== 数据存储 =====================
 sqlalchemy
 
-# ===================== 鉴权 =====================
-pyjwt
-
 # ===================== LangChain =====================
 langchain-core
 langchain-community

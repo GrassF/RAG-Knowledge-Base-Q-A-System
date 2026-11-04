@@ -8,21 +8,6 @@ export interface ApiResponse<T> {
   request_id?: string | null
 }
 
-// ===================== 鉴权 =====================
-
-export interface User {
-  id: number
-  username: string
-  created_at: string
-}
-
-export interface TokenPayload {
-  access_token: string
-  token_type: string
-  expires_in: number
-  user: User
-}
-
 // ===================== 检索 =====================
 
 export type RetrievalMode = 'vector' | 'bm25' | 'hybrid'

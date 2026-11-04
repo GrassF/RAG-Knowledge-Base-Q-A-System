@@ -35,17 +35,8 @@ class ErrorCode:
 
     # 通用 4xxx
     PARAM_INVALID = ErrorDef(4000, "请求参数不合法", 400)
-    UNAUTHORIZED = ErrorDef(4010, "未登录或登录状态已失效", 401)
-    TOKEN_INVALID = ErrorDef(4011, "登录凭证无效", 401)
-    TOKEN_EXPIRED = ErrorDef(4012, "登录已过期，请重新登录", 401)
-    FORBIDDEN = ErrorDef(4030, "没有权限访问该资源", 403)
     NOT_FOUND = ErrorDef(4040, "资源不存在", 404)
     METHOD_NOT_ALLOWED = ErrorDef(4050, "请求方法不被允许", 405)
-
-    # 用户 41xx
-    USERNAME_EXISTS = ErrorDef(4100, "用户名已被注册", 409)
-    USER_NOT_FOUND = ErrorDef(4101, "用户不存在", 404)
-    PASSWORD_ERROR = ErrorDef(4102, "用户名或密码错误", 401)
 
     # 文档 42xx
     FILE_TYPE_UNSUPPORTED = ErrorDef(4200, "不支持的文件类型", 415)

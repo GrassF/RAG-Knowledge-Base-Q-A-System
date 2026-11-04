@@ -10,8 +10,8 @@
     python scripts/smoke_test.py --base-url http://127.0.0.1:8000/api/v1
     python scripts/smoke_test.py --pdf D:/docs/手册.pdf     # 额外验证 PDF 页码
 
-它会覆盖：健康检查 -> 注册/登录 -> 上传 DOCX -> 查看切片 -> SSE 问答
--> 会话历史 -> 删除文档 -> 跨用户隔离 -> 清空。
+它会覆盖：健康检查 -> 上传 DOCX -> 查看切片 -> SSE 问答
+-> 会话历史 -> 重命名 -> 删除文档 -> 清空。
 每一步失败都会立刻退出并打印原因。
 """
 
@@ -42,12 +42,8 @@ def check(condition: bool, message: str) -> None:
 class Client:
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
-        self.token: str | None = None
         self.session = requests.Session()
         self.session.timeout = 120
-
-    def headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self.token}"} if self.token else {}
 
     def _handle(self, response: requests.Response) -> dict:
         try:
@@ -62,20 +58,16 @@ class Client:
         return payload["data"]
 
     def get(self, path: str) -> dict:
-        return self._handle(self.session.get(self.base_url + path, headers=self.headers()))
+        return self._handle(self.session.get(self.base_url + path))
 
     def post(self, path: str, **kwargs) -> dict:
-        return self._handle(
-            self.session.post(self.base_url + path, headers=self.headers(), **kwargs)
-        )
+        return self._handle(self.session.post(self.base_url + path, **kwargs))
 
     def patch(self, path: str, **kwargs) -> dict:
-        return self._handle(
-            self.session.patch(self.base_url + path, headers=self.headers(), **kwargs)
-        )
+        return self._handle(self.session.patch(self.base_url + path, **kwargs))
 
     def delete(self, path: str) -> dict:
-        return self._handle(self.session.delete(self.base_url + path, headers=self.headers()))
+        return self._handle(self.session.delete(self.base_url + path))
 
 
 def build_sample_docx() -> bytes:
@@ -132,64 +124,47 @@ def iter_sse(response: requests.Response):
 
 def run(base_url: str, pdf_path: Path | None) -> None:
     suffix = uuid.uuid4().hex[:6]
-    user_a = f"smoke_a_{suffix}"
-    user_b = f"smoke_b_{suffix}"
-    password = "SmokeTest123"
+    client = Client(base_url)
 
     print("\n[1] 健康检查")
-    anon = Client(base_url)
-    health = anon.get("/health")
+    health = client.get("/health")
     check(health["status"] == "ok", f"服务正常，向量数={health['vectors']}")
 
-    print("\n[2] 注册两个用户（用于验证会话隔离）")
-    client_a = Client(base_url)
-    token_a = client_a.post("/auth/register", json={"username": user_a, "password": password})
-    client_a.token = token_a["access_token"]
-    check(bool(client_a.token), f"用户 {user_a} 注册成功")
-
-    client_b = Client(base_url)
-    token_b = client_b.post("/auth/register", json={"username": user_b, "password": password})
-    client_b.token = token_b["access_token"]
-    check(bool(client_b.token), f"用户 {user_b} 注册成功")
-
-    me = client_a.get("/auth/me")
-    check(me["username"] == user_a, "获取当前用户信息正常")
-
-    print("\n[3] 上传 DOCX 并检查结构信息")
+    print("\n[2] 上传 DOCX 并检查结构信息")
     files = {
         "file": (
-            "冒烟测试文档.docx",
+            f"冒烟测试文档_{suffix}.docx",
             build_sample_docx(),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         )
     }
-    upload = client_a.post("/documents/upload", files=files)
+    upload = client.post("/documents/upload", files=files)
     doc_id = upload["doc_id"]
     check(upload["chunk_count"] > 0, f"切片数 = {upload['chunk_count']}")
     check(upload["section_count"] > 0, f"识别章节数 = {upload['section_count']}")
 
-    chunks = client_a.get(f"/documents/{doc_id}/chunks")
+    chunks = client.get(f"/documents/{doc_id}/chunks")
     check(chunks["total"] == upload["chunk_count"], "切片预览数量与入库数量一致")
     check(
         any(item["section"] for item in chunks["items"]),
         "切片带有 section 元数据",
     )
 
-    documents = client_a.get("/documents")
-    check(len(documents) == 1, "文档列表返回 1 条")
+    documents = client.get("/documents")
+    check(any(item["id"] == doc_id for item in documents), "文档列表包含刚上传的文档")
 
     if pdf_path is not None:
-        print(f"\n[3.1] 额外验证 PDF 页码：{pdf_path}")
-        pdf_upload = client_a.post(
+        print(f"\n[2.1] 额外验证 PDF 页码：{pdf_path}")
+        pdf_upload = client.post(
             "/documents/upload", files={"file": (pdf_path.name, pdf_path.read_bytes())}
         )
-        pdf_chunks = client_a.get(f"/documents/{pdf_upload['doc_id']}/chunks")
+        pdf_chunks = client.get(f"/documents/{pdf_upload['doc_id']}/chunks")
         check(
             any(item["page"] for item in pdf_chunks["items"]),
             "PDF 切片带有页码",
         )
 
-    print("\n[4] 流式问答并校验来源")
+    print("\n[3] 流式问答并校验来源")
     question = "系统采用什么检索策略？重排序是怎么做的？"
     payload = {
         "question": question,
@@ -201,8 +176,8 @@ def run(base_url: str, pdf_path: Path | None) -> None:
     meta: dict = {}
     done: dict = {}
 
-    with client_a.session.post(
-        client_a.base_url + "/chat/stream", json=payload, headers=client_a.headers(), stream=True
+    with client.session.post(
+        client.base_url + "/chat/stream", json=payload, stream=True
     ) as response:
         check(response.status_code == 200, "SSE 接口返回 200")
         for event, data in iter_sse(response):
@@ -227,42 +202,31 @@ def run(base_url: str, pdf_path: Path | None) -> None:
 
     conversation_id = meta["conversation_id"]
 
-    print("\n[5] 会话历史与引用持久化")
-    conversations = client_a.get("/chat/conversations")
-    check(len(conversations) == 1, "会话列表返回 1 条")
-    detail = client_a.get(f"/chat/conversations/{conversation_id}/messages")
-    check(len(detail["messages"]) == 2, "历史包含 1 问 1 答")
+    print("\n[4] 会话历史与引用持久化")
+    conversations = client.get("/chat/conversations")
+    check(any(item["id"] == conversation_id for item in conversations), "会话列表包含当前会话")
+    detail = client.get(f"/chat/conversations/{conversation_id}/messages")
+    check(len(detail["messages"]) >= 2, "历史包含 1 问 1 答")
     check(
         len(detail["messages"][1]["sources"]) > 0,
         "助手消息的引用来源已持久化",
     )
 
-    renamed = client_a.patch(
+    renamed = client.patch(
         f"/chat/conversations/{conversation_id}", json={"title": "冒烟测试会话"}
     )
     check(renamed["title"] == "冒烟测试会话", "会话重命名成功")
 
-    print("\n[6] 跨用户隔离")
-    other_conversations = client_b.get("/chat/conversations")
-    check(other_conversations == [], "用户 B 看不到用户 A 的会话")
-
-    forbidden = client_b.session.get(
-        client_b.base_url + f"/chat/conversations/{conversation_id}/messages",
-        headers=client_b.headers(),
-    )
-    check(forbidden.status_code == 404, "用户 B 访问用户 A 的会话返回 404")
-
-    other_documents = client_b.get("/documents")
-    check(other_documents == [], "用户 B 看不到用户 A 的文档")
-
-    print("\n[7] 删除文档并校验索引清理")
-    deleted = client_a.delete(f"/documents/{doc_id}")
+    print("\n[5] 删除文档并校验索引清理")
+    deleted = client.delete(f"/documents/{doc_id}")
     check(deleted["deleted_chunks"] > 0, f"清理向量 {deleted['deleted_chunks']} 条")
-    check(client_a.get("/documents") == [], "文档列表已清空")
+    remaining = client.get("/documents")
+    check(not any(item["id"] == doc_id for item in remaining), "删除后文档列表不再包含它")
 
-    print("\n[8] 清空知识库")
-    cleared = client_a.post("/documents/clear")
-    check(cleared["deleted_documents"] == 0, "清空操作幂等（此时已无文档）")
+    print("\n[6] 清空知识库")
+    cleared = client.post("/documents/clear")
+    check(cleared["deleted_documents"] == len(remaining), "清空返回删除的文档数一致")
+    check(client.get("/documents") == [], "知识库已清空")
 
     print("\n全部冒烟检查通过")
 

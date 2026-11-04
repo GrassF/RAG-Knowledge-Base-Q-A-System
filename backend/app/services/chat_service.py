@@ -33,7 +33,7 @@ class ChatService:
         self.rag = rag
 
     def stream_chat(
-        self, user_id: int, request: ChatRequest, conversation_id: str | None = None
+        self, request: ChatRequest, conversation_id: str | None = None
     ) -> Iterator[str]:
         """产出 SSE 文本块。自带数据库会话，与请求级会话解耦。"""
         started_at = time.perf_counter()
@@ -42,7 +42,6 @@ class ChatService:
         with session_scope() as db:
             conversations = ConversationService(db)
             conversation = conversations.get_or_create(
-                user_id=user_id,
                 conversation_id=conversation_id or request.conversation_id,
                 first_question=request.question,
             )
@@ -51,7 +50,7 @@ class ChatService:
 
             yield sse_event("meta", {"conversation_id": conversation_id, "title": title})
 
-            history = conversations.build_history(conversation_id, user_id)
+            history = conversations.build_history(conversation_id)
             conversations.add_message(conversation, "user", request.question)
 
             # ---------- 1. 检索 ----------

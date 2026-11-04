@@ -38,8 +38,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             "请在 backend/.env 中填入真实 Key"
         )
 
-    init_db()
-    init_services()
+    init_db() #作用到SQLite，创建表
+    #装配 RagChain：embedding 客户端、Chroma collection、BM25 索引、重排器、qwen-max 客户端、
+    # LCEL 链；再 jieba.initialize() 预热 + 加载/重建 BM25 索引
+    init_services() #向量库 + BM25 + 模型客户端
     logger.info("服务启动完成，接口文档：http://127.0.0.1:{}/docs", settings.port)
 
     yield

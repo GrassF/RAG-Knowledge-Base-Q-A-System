@@ -41,15 +41,11 @@ class DocumentService:
         self.splitter = DocumentSplitter()
 
     # ===================== 上传 =====================
-    def upload(self, user_id: int, filename: str, data: bytes) -> UploadResult:
+    def upload(self, filename: str, data: bytes) -> UploadResult:
         self._validate_file(filename, data)
 
         file_hash = hashlib.sha256(data).hexdigest()
-        existing = self.db.scalar(
-            select(Document).where(
-                Document.user_id == user_id, Document.file_hash == file_hash
-            )
-        )
+        existing = self.db.scalar(select(Document).where(Document.file_hash == file_hash))
         if existing is not None:
             logger.info("文档已存在，跳过重复入库：{}（doc_id={}）", filename, existing.id)
             return UploadResult(
@@ -64,7 +60,6 @@ class DocumentService:
             )
 
         document = Document(
-            user_id=user_id,
             filename=filename,
             file_hash=file_hash,
             file_size=len(data),
@@ -80,7 +75,6 @@ class DocumentService:
                 parsed.blocks,
                 base_metadata={
                     "doc_id": document.id,
-                    "user_id": user_id,
                     "filename": filename,
                     "file_type": document.file_type,
                 },
@@ -121,24 +115,20 @@ class DocumentService:
             raise
 
     # ===================== 查询 =====================
-    def list_documents(self, user_id: int) -> list[DocumentOut]:
+    def list_documents(self) -> list[DocumentOut]:
         documents = self.db.scalars(
-            select(Document)
-            .where(Document.user_id == user_id)
-            .order_by(Document.created_at.desc())
+            select(Document).order_by(Document.created_at.desc())
         ).all()
         return [DocumentOut.model_validate(item) for item in documents]
 
-    def get_owned(self, user_id: int, doc_id: int) -> Document:
+    def get(self, doc_id: int) -> Document:
         document = self.db.get(Document, doc_id)
-        if document is None or document.user_id != user_id:
+        if document is None:
             raise BizException(ErrorCode.DOC_NOT_FOUND)
         return document
 
-    def list_chunks(
-        self, user_id: int, doc_id: int, limit: int = CHUNK_PREVIEW_LIMIT
-    ) -> ChunkPreviewOut:
-        document = self.get_owned(user_id, doc_id)
+    def list_chunks(self, doc_id: int, limit: int = CHUNK_PREVIEW_LIMIT) -> ChunkPreviewOut:
+        document = self.get(doc_id)
         documents: list[LcDocument] = self.rag.vector_store.list_by_doc_id(doc_id)
         documents.sort(key=lambda item: int(item.metadata.get("chunk_index") or 0))
 
@@ -162,8 +152,8 @@ class DocumentService:
         )
 
     # ===================== 删除 =====================
-    def delete(self, user_id: int, doc_id: int) -> dict[str, int | str]:
-        document = self.get_owned(user_id, doc_id)
+    def delete(self, doc_id: int) -> dict[str, int | str]:
+        document = self.get(doc_id)
         deleted_vectors = self.rag.vector_store.delete_by_doc_id(doc_id)
         deleted_tokens = self.rag.bm25_index.remove_by_doc_id(doc_id)
         self.db.delete(document)
@@ -181,24 +171,20 @@ class DocumentService:
             "message": "删除成功",
         }
 
-    def clear(self, user_id: int) -> ClearResult:
-        document_ids = list(
-            self.db.scalars(select(Document.id).where(Document.user_id == user_id)).all()
-        )
+    def clear(self) -> ClearResult:
+        document_ids = list(self.db.scalars(select(Document.id)).all())
         deleted_chunks = 0
         for doc_id in document_ids:
             deleted_chunks += self.rag.vector_store.delete_by_doc_id(doc_id)
             self.rag.bm25_index.remove_by_doc_id(doc_id)
 
         if document_ids:
-            for document in self.db.scalars(
-                select(Document).where(Document.user_id == user_id)
-            ).all():
+            for document in self.db.scalars(select(Document)).all():
                 self.db.delete(document)
         self.db.flush()
 
         logger.info(
-            "知识库已清空：user={} 文档={} 切片={}", user_id, len(document_ids), deleted_chunks
+            "知识库已清空：文档={} 切片={}", len(document_ids), deleted_chunks
         )
         return ClearResult(
             deleted_documents=len(document_ids),

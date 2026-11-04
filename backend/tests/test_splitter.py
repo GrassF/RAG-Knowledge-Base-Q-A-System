@@ -11,7 +11,7 @@ from __future__ import annotations
 from app.services.parser.base import ParsedBlock
 from app.services.splitter import DocumentSplitter
 
-BASE_META = {"doc_id": 1, "user_id": 1, "filename": "手册.pdf", "file_type": ".pdf"}
+BASE_META = {"doc_id": 1, "filename": "手册.pdf", "file_type": ".pdf"}
 
 
 def _blocks() -> list[ParsedBlock]:

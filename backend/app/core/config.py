@@ -2,7 +2,7 @@
 
 机制：pydantic-settings 从 backend/.env 读取；字段名的小写形式即环境变量名
       （dashscope_api_key ← DASHSCOPE_API_KEY）；get_settings() 带 lru_cache 单例
-内容：应用元信息、API 密钥、向量库与集合、检索与重排参数、JWT、限流、日志
+内容：应用元信息、API 密钥、向量库与集合、检索与重排参数、限流、日志
 要点：派生路径用 @property 计算成绝对路径，避免各处手写拼接
 """
 
@@ -59,11 +59,11 @@ class Settings(BaseSettings):
 
     # ===================== 向量库 =====================
     vector_type: str = "chroma"
-    collection_name: str = "rag_v2"
+    collection_name: str = "rag_kb"
     persist_directory: str = "./data/chroma_db"
     # PGVector 配置（vector_type=pgvector 时生效）
     pg_connection_string: str = ""
-    pg_collection_name: str = "rag_v2"
+    pg_collection_name: str = "rag_kb"
 
     # ===================== 文档切分 =====================
     chunk_size: int = 500
@@ -96,11 +96,6 @@ class Settings(BaseSettings):
     # 指代消解：用历史把追问改写成独立查询，多一次大模型调用
     enable_query_rewrite: bool = False
     query_rewrite_model: str = "qwen3-max"
-
-    # ===================== 鉴权 =====================
-    jwt_secret_key: str = "change-me-in-production"
-    jwt_algorithm: str = "HS256"
-    jwt_expire_minutes: int = 60 * 24
 
     # ===================== 上传限制 =====================
     max_upload_size_mb: int = 20

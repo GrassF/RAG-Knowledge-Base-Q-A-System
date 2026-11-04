@@ -1,9 +1,8 @@
-"""ORM 模型：用户、会话、消息、文档。
+"""ORM 模型：会话、消息、文档。
 
-User：账号，密码只存 PBKDF2 哈希
 Conversation / Message：多轮对话记忆；Message 冗余存 sources 的 JSON 快照
 Document：上传文档的元信息与切片统计
-公共工具：now()（UTC 时间）、new_id()（业务 ID 生成）
+公共工具：now()（本地时间）、new_id()（业务 ID 生成）
 """
 
 from __future__ import annotations
@@ -18,7 +17,6 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -37,37 +35,17 @@ class Base(DeclarativeBase):
     pass
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    username: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(256), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
-
-    conversations: Mapped[list["Conversation"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
-    )
-    documents: Mapped[list["Document"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
-    )
-
-
 class Conversation(Base):
     __tablename__ = "conversations"
-    __table_args__ = (Index("ix_conversations_user_updated", "user_id", "updated_at"),)
+    __table_args__ = (Index("ix_conversations_updated", "updated_at"),)
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
     title: Mapped[str] = mapped_column(String(128), default="新对话", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=now, onupdate=now, nullable=False
     )
 
-    user: Mapped[User] = relationship(back_populates="conversations")
     messages: Mapped[list["Message"]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",
@@ -96,18 +74,12 @@ class Message(Base):
 
 class Document(Base):
     __tablename__ = "documents"
-    __table_args__ = (
-        UniqueConstraint("user_id", "file_hash", name="uq_documents_user_hash"),
-        Index("ix_documents_user_created", "user_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_documents_created", "created_at"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
-    )
     filename: Mapped[str] = mapped_column(String(256), nullable=False)
-    # 原始文件的 SHA-256，用于同一用户内去重
-    file_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    # 原始文件的 SHA-256，用于全库去重
+    file_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
     file_size: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     file_type: Mapped[str] = mapped_column(String(16), default="", nullable=False)
     # processing / ready / failed
@@ -115,5 +87,3 @@ class Document(Base):
     chunk_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     error_message: Mapped[str | None] = mapped_column(String(512), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, nullable=False)
-
-    user: Mapped[User] = relationship(back_populates="documents")

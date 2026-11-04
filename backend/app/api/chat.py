@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Path
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import CurrentUser, DbSession, RagService
+from app.api.deps import DbSession, RagService
 from app.schemas.chat import (
     ChatRequest,
     ConversationDetail,
@@ -46,11 +46,10 @@ SSE_HEADERS = {
         }
     },
 )
-def chat_stream(payload: ChatRequest, user: CurrentUser, rag: RagService) -> StreamingResponse:
-    user_id = user.id  # 先把值取出来，避免请求级数据库会话关闭后再访问 ORM 对象
+def chat_stream(payload: ChatRequest, rag: RagService) -> StreamingResponse:
     service = ChatService(rag)
     return StreamingResponse(
-        service.stream_chat(user_id, payload),
+        service.stream_chat(payload),
         media_type="text/event-stream",
         headers=SSE_HEADERS,
     )
@@ -59,10 +58,10 @@ def chat_stream(payload: ChatRequest, user: CurrentUser, rag: RagService) -> Str
 @router.get(
     "/conversations",
     response_model=ApiResponse[list[ConversationOut]],
-    summary="当前用户的会话列表",
+    summary="会话列表",
 )
-def list_conversations(user: CurrentUser, db: DbSession) -> dict:
-    return success(ConversationService(db).list_for_user(user.id))
+def list_conversations(db: DbSession) -> dict:
+    return success(ConversationService(db).list_all())
 
 
 @router.get(
@@ -71,12 +70,11 @@ def list_conversations(user: CurrentUser, db: DbSession) -> dict:
     summary="会话历史消息（含引用来源）",
 )
 def list_messages(
-    user: CurrentUser,
     db: DbSession,
     conversation_id: str = Path(min_length=8, max_length=40),
 ) -> dict:
     service = ConversationService(db)
-    conversation = service.get_owned(conversation_id, user.id)
+    conversation = service.get(conversation_id)
     detail = ConversationDetail(
         conversation=ConversationOut(
             id=conversation.id,
@@ -84,34 +82,36 @@ def list_messages(
             created_at=conversation.created_at,
             updated_at=conversation.updated_at,
         ),
-        messages=service.list_messages(conversation_id, user.id),
+        messages=service.list_messages(conversation_id),
     )
     return success(detail)
 
 
-@router.patch(
-    "/conversations/{conversation_id}",
-    response_model=ApiResponse[ConversationOut],
-    summary="重命名会话",
+@router.patch(  # 注册 PATCH 接口：局部更新，只改请求里传的字段
+    "/conversations/{conversation_id}",  # 路径参数，拼成 /api/v1/chat/conversations/{conversation_id}
+    response_model=ApiResponse[ConversationOut],  # 响应结构：data 部分是 ConversationOut
+    summary="重命名会话",  # 接口摘要，显示在 /docs 列表
 )
-def rename_conversation(
-    payload: RenameRequest,
-    user: CurrentUser,
-    db: DbSession,
-    conversation_id: str = Path(min_length=8, max_length=40),
-) -> dict:
-    return success(ConversationService(db).rename(conversation_id, user.id, payload.title))
+def rename_conversation(  # 处理函数：只修改会话标题
+    payload: RenameRequest,  # 请求体：内部只有 title 字段
+    db: DbSession,  # 依赖注入：请求级数据库会话，结束后自动关闭
+    conversation_id: str = Path(min_length=8, max_length=40),  # 路径参数：长度 8~40 校验
+) -> dict:  # 返回统一响应字典
+    service = ConversationService(db)  # 用请求级会话构造会话服务
+    result = service.rename(conversation_id, payload.title)  # 改标题（超长截断 128）
+    db.commit()  # 提交事务，否则请求结束时会话关闭会回滚
+    return success(result)  # 包装成 {code, message, data, request_id}
 
 
-@router.delete(
-    "/conversations/{conversation_id}",
-    response_model=ApiResponse[dict | None],
-    summary="删除会话",
+@router.delete(  # 注册 DELETE 接口：删除整个会话
+    "/conversations/{conversation_id}",  # 路径参数，指向某个具体会话
+    response_model=ApiResponse[dict | None],  # 响应结构：成功时 data 为 null
+    summary="删除会话",  # 接口摘要，显示在 /docs 列表
 )
-def delete_conversation(
-    user: CurrentUser,
-    db: DbSession,
-    conversation_id: str = Path(min_length=8, max_length=40),
-) -> dict:
-    ConversationService(db).delete(conversation_id, user.id)
-    return success(None, message="会话已删除")
+def delete_conversation(  # 处理函数：删会话及其下所有消息
+    db: DbSession,  # 依赖注入：请求级数据库会话，结束后自动关闭
+    conversation_id: str = Path(min_length=8, max_length=40),  # 路径参数：长度 8~40 校验
+) -> dict:  # 返回统一响应字典
+    ConversationService(db).delete(conversation_id)  # 删除；外键 CASCADE 一并删掉消息
+    db.commit()  # 提交事务，否则请求结束时会话关闭会回滚
+    return success(None, message="会话已删除")  # data 为 null，只带提示与 request_id

@@ -32,34 +32,30 @@ class ConversationService:
 
     # ===================== 会话 =====================
     def get_or_create(
-        self, user_id: int, conversation_id: str | None, first_question: str
+        self, conversation_id: str | None, first_question: str
     ) -> Conversation:
         if conversation_id:
-            conversation = self.get_owned(conversation_id, user_id)
+            conversation = self.get(conversation_id)
             if conversation.title in ("", "新对话"):
                 conversation.title = self._make_title(first_question)
             return conversation
 
-        conversation = Conversation(
-            user_id=user_id, title=self._make_title(first_question)
-        )
+        conversation = Conversation(title=self._make_title(first_question))
         self.db.add(conversation)
         self.db.flush()
-        logger.info("新建会话 {}（user={}）", conversation.id, user_id)
+        logger.info("新建会话 {}", conversation.id)
         return conversation
 
-    def get_owned(self, conversation_id: str, user_id: int) -> Conversation:
+    def get(self, conversation_id: str) -> Conversation:
         conversation = self.db.get(Conversation, conversation_id)
-        if conversation is None or conversation.user_id != user_id:
-            # 不区分"不存在"和"不是你的"，避免探测他人资源
+        if conversation is None:
             raise BizException(ErrorCode.CONVERSATION_NOT_FOUND)
         return conversation
 
-    def list_for_user(self, user_id: int) -> list[ConversationOut]:
+    def list_all(self) -> list[ConversationOut]:
         rows = self.db.execute(
             select(Conversation, func.count(Message.id))
             .outerjoin(Message, Message.conversation_id == Conversation.id)
-            .where(Conversation.user_id == user_id)
             .group_by(Conversation.id)
             .order_by(Conversation.updated_at.desc())
         ).all()
@@ -75,15 +71,15 @@ class ConversationService:
             for conversation, count in rows
         ]
 
-    def rename(self, conversation_id: str, user_id: int, title: str) -> ConversationOut:
-        conversation = self.get_owned(conversation_id, user_id)
+    def rename(self, conversation_id: str, title: str) -> ConversationOut:
+        conversation = self.get(conversation_id)
         conversation.title = title[:128]
         conversation.updated_at = now()
         self.db.flush()
         return self._to_out(conversation)
 
-    def delete(self, conversation_id: str, user_id: int) -> None:
-        conversation = self.get_owned(conversation_id, user_id)
+    def delete(self, conversation_id: str) -> None:
+        conversation = self.get(conversation_id)
         self.db.delete(conversation)
         self.db.flush()
 
@@ -106,8 +102,8 @@ class ConversationService:
         self.db.flush()
         return message
 
-    def list_messages(self, conversation_id: str, user_id: int) -> list[MessageOut]:
-        self.get_owned(conversation_id, user_id)
+    def list_messages(self, conversation_id: str) -> list[MessageOut]:
+        self.get(conversation_id)
         messages = self.db.scalars(
             select(Message)
             .where(Message.conversation_id == conversation_id)
@@ -115,14 +111,12 @@ class ConversationService:
         ).all()
         return [self._to_message_out(message) for message in messages]
 
-    def build_history(
-        self, conversation_id: str, user_id: int
-    ) -> list[BaseMessage]:
+    def build_history(self, conversation_id: str) -> list[BaseMessage]:
         """取最近 N 轮历史，供 Prompt 使用。
 
         只取最近 max_history_rounds*2 条，并对超长消息做截断，控制 token 开销。
         """
-        self.get_owned(conversation_id, user_id)
+        self.get(conversation_id)
         limit = max(2, self.settings.max_history_rounds * 2)
         rows = self.db.scalars(
             select(Message)

@@ -2,7 +2,7 @@
 
 基于 **FastAPI + LangChain + Chroma + 通义千问** 的知识库问答系统，前端为 **Vue 3 + TypeScript + Element Plus**。
 
-相比常见的 RAG demo，重点补齐了工程链路：结构感知切分、混合检索、Cross-Encoder 重排、答案来源追溯到页码、多用户会话隔离、统一异常与结构化日志。
+系统围绕文档解析、检索质量与答案可追溯性构建完整链路：结构感知切分、混合检索、Cross-Encoder 重排、答案来源追溯到页码、统一异常与结构化日志。
 
 ## 核心能力
 
@@ -16,8 +16,8 @@
 | 混合检索 | 向量与 BM25 并行召回，用 RRF（`score = Σ 1/(k + rank)`，k=60）融合 |
 | 重排序 | DashScope Cross-Encoder（`gte-rerank-v2`，可切 `qwen3-rerank`），超时自动降级 |
 | 答案追溯 | SSE 先推 `sources` 再推答案，每条引用带文件名 / 页码 / 章节 / 各路分数 |
-| 多轮对话 | SQLite 持久化会话与消息，历史按轮数裁剪，用户间强制隔离 |
-| 工程化 | pydantic-settings 配置、统一 `{code, message, data, request_id}`、loguru 结构化日志、JWT 鉴权 |
+| 多轮对话 | SQLite 持久化会话与消息，历史按轮数裁剪 |
+| 工程化 | pydantic-settings 配置、统一 `{code, message, data, request_id}`、loguru 结构化日志、可选限流 |
 
 ## 目录结构
 
@@ -25,10 +25,10 @@
 backend/
 ├── app/
 │   ├── main.py                # 应用工厂：中间件、路由、异常处理、生命周期
-│   ├── core/                  # 配置 / 日志 / 鉴权 / 异常码 / 中间件
+│   ├── core/                  # 配置 / 日志 / 异常码 / 中间件
 │   ├── db/                    # SQLAlchemy 2.0 模型与会话
 │   ├── schemas/               # Pydantic 请求响应模型
-│   ├── api/                   # auth / chat / documents / health 路由
+│   ├── api/                   # chat / documents / health 路由
 │   └── services/
 │       ├── parser/            # PDF / DOCX / TXT 解析，产出带页码章节的 ParsedBlock
 │       ├── cleaning.py        # 文本清洗
@@ -50,10 +50,10 @@ backend/
 
 frontend-web/
 ├── src/
-│   ├── api/                   # http 封装（JWT 注入、401 跳转）+ 各业务接口
+│   ├── api/                   # http 封装 + 各业务接口
 │   ├── composables/useSSE.ts  # fetch + ReadableStream 手写 SSE 解析
-│   ├── stores/                # auth / conversation / chat
-│   ├── views/                 # LoginView / ChatView / DocumentsView
+│   ├── stores/                # conversation / chat
+│   ├── views/                 # ChatView / DocumentsView
 │   └── components/            # ChatMessage / SourceCard / ConversationSidebar / RetrievalPanel
 └── vite.config.ts             # /api 代理到 127.0.0.1:8000
 ```
@@ -99,9 +99,6 @@ npm run dev          # http://localhost:5173
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| POST | `/api/v1/auth/register` | 注册并返回 token |
-| POST | `/api/v1/auth/login` | 登录 |
-| GET | `/api/v1/auth/me` | 当前用户 |
 | POST | `/api/v1/chat/stream` | SSE 流式问答 |
 | GET | `/api/v1/chat/conversations` | 会话列表 |
 | GET | `/api/v1/chat/conversations/{id}/messages` | 历史消息（含引用来源） |
@@ -111,7 +108,7 @@ npm run dev          # http://localhost:5173
 | GET | `/api/v1/documents` | 文档列表 |
 | GET | `/api/v1/documents/{id}/chunks` | 切片预览（调参用） |
 | DELETE | `/api/v1/documents/{id}` | 删除文档（同步清理向量与 BM25） |
-| POST | `/api/v1/documents/clear` | 清空当前用户知识库 |
+| POST | `/api/v1/documents/clear` | 清空知识库 |
 | GET | `/api/v1/health` | 健康检查 |
 
 ### SSE 事件顺序
@@ -158,7 +155,7 @@ event: error     -> {"code":5002,"message":"重排服务超时，已降级"}
 cd backend
 python -m pytest tests -q
 
-# 端到端冒烟：注册 -> 上传 -> 问答 -> 来源校验 -> 跨用户隔离 -> 删除
+# 端到端冒烟：上传 -> 问答 -> 来源校验 -> 会话历史 -> 删除 -> 清空
 # 需要后端已启动且 DASHSCOPE_API_KEY 可用
 python scripts/smoke_test.py
 python scripts/smoke_test.py --pdf D:/docs/手册.pdf   # 额外验证 PDF 页码
@@ -166,17 +163,7 @@ python scripts/smoke_test.py --pdf D:/docs/手册.pdf   # 额外验证 PDF 页�
 # 索引维护
 python scripts/rebuild_index.py --stats
 python scripts/rebuild_index.py                       # 从向量库重建 BM25
-python scripts/rebuild_index.py --migrate-legacy --username demo
 ```
-
-## 从旧版本升级
-
-旧实现的 metadata 只有 `source / create_time`，没有页码，因此新版换了 collection 名（`rag_v2`），避免读到不兼容数据。
-
-- 旧版的单体后端（`main.py` / `rag.py` / `vector_stores.py` / `knowledge_base.py` / `config_data.py` / `check_db.py`）
-  与 Streamlit 前端已从仓库移除，对应能力全部迁移到 `app/` 下；需要回看旧实现可用 `git show <首个提交>`。
-- 旧向量库数据可通过 `python scripts/rebuild_index.py --migrate-legacy --username <用户名>` 导入；
-  但旧数据不含页码，如需来源追溯建议重新上传原始文件。
 
 ## 已知取舍
 

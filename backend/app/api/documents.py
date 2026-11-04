@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, File, Path, UploadFile
 
-from app.api.deps import CurrentUser, DbSession, RagService
+from app.api.deps import DbSession, RagService
 from app.schemas.common import ApiResponse, success
 from app.schemas.document import (
     ChunkPreviewOut,
@@ -28,7 +28,6 @@ router = APIRouter(prefix="/documents", tags=["文档"])
     summary="上传文档并入库（TXT / PDF / DOCX）",
 )
 def upload_document(
-    user: CurrentUser,
     db: DbSession,
     rag: RagService,
     file: UploadFile = File(..., description="待上传的文档"),
@@ -36,7 +35,7 @@ def upload_document(
     # 同步端点：FastAPI 会自动放到线程池执行，不会阻塞事件循环
     data = file.file.read()
     filename = sanitize_filename(file.filename or "")
-    result = DocumentService(db, rag).upload(user.id, filename, data)
+    result = DocumentService(db, rag).upload(filename, data)
     db.commit()
     return success(result)
 
@@ -44,10 +43,10 @@ def upload_document(
 @router.get(
     "",
     response_model=ApiResponse[list[DocumentOut]],
-    summary="当前用户的知识库文档列表",
+    summary="知识库文档列表",
 )
-def list_documents(user: CurrentUser, db: DbSession, rag: RagService) -> dict:
-    return success(DocumentService(db, rag).list_documents(user.id))
+def list_documents(db: DbSession, rag: RagService) -> dict:
+    return success(DocumentService(db, rag).list_documents())
 
 
 @router.get(
@@ -56,12 +55,11 @@ def list_documents(user: CurrentUser, db: DbSession, rag: RagService) -> dict:
     summary="查看某个文档的切片（调参用）",
 )
 def list_chunks(
-    user: CurrentUser,
     db: DbSession,
     rag: RagService,
     doc_id: int = Path(ge=1),
 ) -> dict:
-    return success(DocumentService(db, rag).list_chunks(user.id, doc_id))
+    return success(DocumentService(db, rag).list_chunks(doc_id))
 
 
 @router.delete(
@@ -70,12 +68,11 @@ def list_chunks(
     summary="删除文档（同步清理向量库与 BM25 索引）",
 )
 def delete_document(
-    user: CurrentUser,
     db: DbSession,
     rag: RagService,
     doc_id: int = Path(ge=1),
 ) -> dict:
-    result = DocumentService(db, rag).delete(user.id, doc_id)
+    result = DocumentService(db, rag).delete(doc_id)
     db.commit()
     return success(result)
 
@@ -83,9 +80,9 @@ def delete_document(
 @router.post(
     "/clear",
     response_model=ApiResponse[ClearResult],
-    summary="清空当前用户的知识库",
+    summary="清空知识库",
 )
-def clear_documents(user: CurrentUser, db: DbSession, rag: RagService) -> dict:
-    result = DocumentService(db, rag).clear(user.id)
+def clear_documents(db: DbSession, rag: RagService) -> dict:
+    result = DocumentService(db, rag).clear()
     db.commit()
     return success(result)

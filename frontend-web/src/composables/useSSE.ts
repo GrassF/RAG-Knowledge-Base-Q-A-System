@@ -3,12 +3,11 @@
  *
  * 为什么不用浏览器原生 EventSource：
  * 1. 它只能发 GET，而问答需要 POST 携带问题与检索参数；
- * 2. 它不能自定义 Authorization 头，无法带 JWT。
- * 所以这里用 fetch + ReadableStream 手写解析。
+ * 2. 它无法自行控制请求头与中断，这里用 fetch + ReadableStream 手写解析。
  */
 import { onScopeDispose, ref } from 'vue'
 
-import { API_BASE_URL, ApiError, getToken } from '@/api/http'
+import { API_BASE_URL, ApiError } from '@/api/http'
 import type {
   ChatRequestPayload,
   SseDelta,
@@ -119,13 +118,9 @@ export async function streamChat(
   handlers: StreamHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
-  const token = getToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'text/event-stream',
-  }
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
   }
 
   const response = await fetch(`${API_BASE_URL}/chat/stream`, {
